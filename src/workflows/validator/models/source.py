@@ -6,5 +6,5 @@ class EvidenceFragment(BaseModel):
 
 class Source(BaseModel):
     url: str = Field(..., description="URL of the source")
-    name: str | None = Field(..., default=None, description="Name of source")
+    name: str | None = Field(..., description="Name of source")
     fragments: list[EvidenceFragment]
