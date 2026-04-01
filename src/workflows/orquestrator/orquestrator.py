@@ -2,6 +2,7 @@ from langgraph.graph import StateGraph
 from typing import TypedDict, Literal
 
 from .models.claim import Claim
+from src.workflows.snippet_analyzer.snippet_analyzer import SnippetAnalyzer
 
 class State(TypedDict):
     analysis_type: Literal["article", "snippet"]
@@ -88,7 +89,7 @@ class Orquestrator:
         Returns:
             "article" | "snippet": Route to take based on analysis type.
         """
-        return "article "if state["analysis_type"] == "article" else "snippet"
+        return "article" if state["analysis_type"] == "article" else "snippet"
 
     def _route_by_present_claims(self, state: State) -> Literal["continue", "end"]:
         """
@@ -113,6 +114,8 @@ class Orquestrator:
             dict[str, any]: Dictionary containing the properties to update in the global state.
         """
 
+        return state
+
     def _snippet_analyzer_adapter(self, state: State) -> dict[str, any]:
         """
         Handles execution of snippet analyzer sub-graph. The sub-graph internally performs analysis and
@@ -123,6 +126,13 @@ class Orquestrator:
         Returns:
             dict[str, any]: Dictionary containing the properties to update in the global state.
         """
+
+        snippet_analyzer = SnippetAnalyzer()
+        extracted_claims = snippet_analyzer.run(snippet=state["snippet"])
+
+        return {
+            "claims": extracted_claims
+        }
 
     def _validator(self, state: State) -> dict[str, any]:
         """
@@ -135,6 +145,8 @@ class Orquestrator:
             dict[str, any]: Dictionary containing the properties to update in the global state.
         """
 
+        return state
+
     def _output_formatter(self, state: State) -> dict[str, any]:
         """
         Formats final text output.
@@ -145,12 +157,22 @@ class Orquestrator:
             dict[str, any]: Dictionary containing the properties to update in the global state.
         """
 
-    def run(self) -> ...:
+        return state
+
+    def run(self, snippet: str | None = "") -> ...:
         """
         Runs Orquestrator workflows with all of it's sub-workflows.
 
         Returns:
             ...
         """
-        initial_state = State(analysis_type=self.analysis_type)
+        initial_state = State(
+            analysis_type=self.analysis_type,
+            snippet=snippet,
+            title="",
+            content="",
+            claims=[],
+        )
         result = self.graph.invoke(initial_state)
+
+        print(result)
