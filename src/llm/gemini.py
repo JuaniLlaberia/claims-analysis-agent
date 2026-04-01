@@ -9,7 +9,8 @@ class Gemini:
     def __init__(self,
                  temperature: float = 0.05,
                  top_p: float = 0.3,
-                 top_k: int = 10) -> None:
+                 top_k: int = 10,
+                 model_name: str = os.getenv("GEMINI_MODEL")) -> None:
         """
         Initializes Gemini class instance
 
@@ -22,7 +23,7 @@ class Gemini:
         self.temperature = temperature
         self.top_p = top_p
         self.top_k = top_k
-        self.model_name = os.getenv("GEMINI_MODEL")
+        self.model_name = model_name
         self.google_api_key = os.getenv("GOOGLE_GEMINI_KEY")
 
         if not self.model_name:
