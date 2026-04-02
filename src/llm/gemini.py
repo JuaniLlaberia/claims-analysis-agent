@@ -84,3 +84,26 @@ class Gemini:
                 "error": True,
                 "error_message": str(e)
             }
+        
+    def invoke_model_grounded(self,
+                          prompt: any,
+                          output_schema: BaseModel,
+                          input: dict[str, any]) -> any:
+        """
+        Same as invoke_model but with Google Search grounding enabled.
+        Use only for nodes that need real-time citation retrieval.
+        """
+        grounded_llm = self.llm.bind(
+            tools=[{"google_search": {}}]
+        )
+        structured_llm = grounded_llm.with_structured_output(output_schema)
+        chain = prompt | structured_llm
+
+        try:
+            result = chain.invoke(input)
+            return result
+        except Exception as e:
+            return {
+                "error": True,
+                "error_message": str(e)
+            }
