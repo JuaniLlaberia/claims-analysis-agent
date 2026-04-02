@@ -1,7 +1,10 @@
 from langgraph.graph import StateGraph
-from typing import TypedDict, Literal
+from langgraph.types import Send
+from typing import TypedDict, Literal, Annotated
+from operator import add
 
-from .models.claim import Claim
+from src.workflows.validator.validator import Validator
+from .models.claim import Claim, AnalyzedClaim
 from src.workflows.snippet_analyzer.snippet_analyzer import SnippetAnalyzer
 
 class State(TypedDict):
@@ -13,6 +16,7 @@ class State(TypedDict):
     snippet: str = ""
     # Analysis data
     claims: list[Claim] = []
+    analyzed_claims: Annotated[list[AnalyzedClaim], add]
 
 class Orquestrator:
     """
@@ -30,6 +34,7 @@ class Orquestrator:
             analysis_type ('article' | 'snippet'): Whether the orquestrator is running for a full article or for a snippet.
         """
         self.analysis_type = analysis_type
+        self.validator = Validator()
         self.graph = self._build_graph()
 
     def _build_graph(self) -> StateGraph:
@@ -68,9 +73,8 @@ class Orquestrator:
 
         graph.add_conditional_edges(
             "claims_router",
-            self._route_by_present_claims,
+            self._route_or_assign_workers,
             {
-                "continue": "validation_and_citation",
                 "end": "output_formatter"
             }
         )
@@ -91,17 +95,7 @@ class Orquestrator:
         """
         return "article" if state["analysis_type"] == "article" else "snippet"
 
-    def _route_by_present_claims(self, state: State) -> Literal["continue", "end"]:
-        """
-        Router node that validates if corpus has claims or not. In case of containing claims
-        the workflow continues, else it ends.
 
-        Args:
-            state (State): Graph state.
-        Returns:
-            "continue" | "end": Route to take based on available claims quantity.
-        """
-        return "continue" if len(state["claims"]) >= 1 else "end"
 
     def _article_analyzer_adapter(self, state: State) -> dict[str, any]:
         """
@@ -133,19 +127,32 @@ class Orquestrator:
         return {
             "claims": extracted_claims
         }
-
-    def _validator(self, state: State) -> dict[str, any]:
+    
+    def _route_or_assign_workers(self, state: State):
         """
-        Handles execution of the validation and citations sub-graph. The sub-graph internally
-        verifies all provides claims and finds citations for each.
+        Routes to end if no claims, otherwise assigns parallel validator workers for each claim.
+        """
+        if len(state["claims"]) == 0:
+            return "end"
+        return [Send("validation_and_citation", {"claim": claim}) for claim in state["claims"]]
+
+    def _validator(self, state: dict[str, any]) -> dict[str, any]:
+        """
+        Handles execution of the validation and citations sub-graph for a single claim. The sub-graph internally
+        verifies the claim and finds citations for it.
         
         Args:
-            state (State): Graph state.
+            state (dict): Partial state containing a single claim.
         Returns:
-            dict[str, any]: Dictionary containing the properties to update in the global state.
+            dict[str, any]: Dictionary containing the analyzed claim to add to global state.
         """
+        claim = state["claim"]
+        print(f"Processing claim in parallel: '{claim.text[:50]}...'")
+        validator_result_dict = self.validator.run(claim)
+        validator_result = AnalyzedClaim(**validator_result_dict)
+        print(f"Finished processing claim: '{claim.text[:50]}...'")
 
-        return state
+        return {"analyzed_claims": [validator_result]}
 
     def _output_formatter(self, state: State) -> dict[str, any]:
         """
@@ -159,12 +166,12 @@ class Orquestrator:
 
         return state
 
-    def run(self, snippet: str | None = "") -> ...:
+    def run(self, snippet: str | None = "") -> list[AnalyzedClaim]:
         """
         Runs Orquestrator workflows with all of it's sub-workflows.
 
         Returns:
-            ...
+            list[AnalyzedClaim]: List of analyzed claims contaning information about the sources, evidence and it's analysis.
         """
         initial_state = State(
             analysis_type=self.analysis_type,
@@ -172,7 +179,8 @@ class Orquestrator:
             title="",
             content="",
             claims=[],
+            analyzed_claims=[]
         )
-        result = self.graph.invoke(initial_state)
 
-        print(result)
+        results = self.graph.invoke(initial_state)
+        return results["analyzed_claims"]
