@@ -19,7 +19,7 @@ class GFCAClient:
         self,
         api_key: str = None,
         similarity_model: str = "paraphrase-multilingual-mpnet-base-v2",
-        similarity_threshold: float = 0.35,
+        similarity_threshold: float = 0.7,
     ):
         """
         Args:
@@ -35,37 +35,6 @@ class GFCAClient:
 
         self.similarity_threshold = similarity_threshold    
         self.encoder = SentenceTransformer(similarity_model)
-
-    def search(
-        self,
-        query: str,
-        language_code: str = "en",
-        max_age_days: int = 365 * 3,
-        page_size: int = 10,
-        publisher_filter: str = None) -> list[FactCheckResult]:
-        """
-        Search GFCA for fact-checked claims matching `query`.
-
-        Args:
-            query: The claim text to search for.
-            language_code: BCP-47 code — "en", "es", "pt", etc.
-            max_age_days: How far back to look. Default 3 years.
-            page_size: Max raw results to fetch from GFCA before filtering.
-            publisher_filter: Pin to a specific fact-checker site.
-
-        Returns:
-            Filtered, deduplicated, similarity-scored list of FactCheckResult.
-            Empty list if nothing passes the similarity threshold → triggers fallback.
-        """
-        # Get GFCA raw results from API
-        raw_results = self._fetch_gfca(query, language_code, max_age_days, page_size, publisher_filter)
-        # Data preparation and filtering
-        parsed = self._parse_results(raw=raw_results)
-        scored = self._score_similarity(query=query, results=parsed)
-        deduped = self._deduplicate_facts(results=scored)
-        filtered = self._filte_by_similarity(results=deduped)
-
-        return filtered
 
     def _fetch_gfca(
         self,
@@ -206,3 +175,34 @@ class GFCAClient:
             str: Mapped label to normalized labels.
         """
         return RATING_MAP.get(raw.lower().strip(), "UNVERIFIED")
+    
+    def search(
+        self,
+        query: str,
+        language_code: str = "en",
+        max_age_days: int = 365 * 3,
+        page_size: int = 15,
+        publisher_filter: str = None) -> list[FactCheckResult]:
+        """
+        Search GFCA for fact-checked claims matching `query`.
+
+        Args:
+            query: The claim text to search for.
+            language_code: BCP-47 code — "en", "es", "pt", etc.
+            max_age_days: How far back to look. Default 3 years.
+            page_size: Max raw results to fetch from GFCA before filtering.
+            publisher_filter: Pin to a specific fact-checker site.
+
+        Returns:
+            Filtered, deduplicated, similarity-scored list of FactCheckResult.
+            Empty list if nothing passes the similarity threshold → triggers fallback.
+        """
+        # Get GFCA raw results from API
+        raw_results = self._fetch_gfca(query, language_code, max_age_days, page_size, publisher_filter)
+        # Data preparation and filtering
+        parsed = self._parse_results(raw=raw_results)
+        scored = self._score_similarity(query=query, results=parsed)
+        deduped = self._deduplicate_facts(results=scored)
+        filtered = self._filte_by_similarity(results=deduped)
+
+        return filtered
