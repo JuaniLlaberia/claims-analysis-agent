@@ -22,7 +22,7 @@ class SnippetAnalyzer:
     """
     def __init__(self):
         """
-        Initialices SnippetAnalyzer workflow class.
+        Initialize SnippetAnalyzer workflow class.
         """
         self.llm = Gemini(model_name=os.getenv("GEMINI_MODEL_SNIPPET_EXTRACTION"))
         self.graph = self._build_graph()
@@ -80,14 +80,14 @@ class SnippetAnalyzer:
                 "claims": response_data.get("claims"),
             }
 
-        print("1st LLM RESPOSE", data)
-
         return {"raw_claims": data["claims"]}
 
     def _route_by_claims_quantity(self, state: State) -> Literal["continue", "end"]:
         """
         Router node to validate quantity of extracted claims.
 
+        Args:
+            state (State): Graph state.
         Returns:
             'continue' | 'end': Route label based on claim quantity.
         """
@@ -116,10 +116,8 @@ class SnippetAnalyzer:
                 "claims": response_data.get("claims"),
             }
 
-        print("2d DATA AFTER NORM", data)
-
         return {"claims": [Claim(text=claim,
-                                 verified=False,
+                                 evidence_found=False,
                                  sources=[]) for claim in data["claims"]]}
 
     def run(self, snippet: str) -> list[Claim]:
@@ -138,7 +136,5 @@ class SnippetAnalyzer:
         )
 
         results = self.graph.invoke(initial_state)
-
-        print("RESULTS", results)
 
         return results["claims"]
