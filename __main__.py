@@ -1,7 +1,10 @@
 from flask import Flask
+from dotenv import load_dotenv
 
 from src.routes.analysis import analysis_blueprint
 from src.routes.health import health_blueprint
+
+load_dotenv()
 
 def create_app() -> Flask:
     """
