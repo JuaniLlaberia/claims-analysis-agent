@@ -220,6 +220,9 @@ class Validator:
                                                       "claim": state["claim"].text,
                                                       "evidence": evidence_text
                                                   })
+
+        if isinstance(response, dict) and response.get("error"):
+            raise Exception(f"LLM error: {response.get('error_message', 'Unknown error')}")
     
         if isinstance(response, ValidatorOutput):
             data = {
@@ -270,6 +273,9 @@ class Validator:
                 "sources": sources_text,
             }
         )
+        
+        if isinstance(response, dict) and response.get("error"):
+            raise Exception(f"LLM error: {response.get('error_message', 'Unknown error')}")
 
         if isinstance(response, CitationsOutput):
             sources = [

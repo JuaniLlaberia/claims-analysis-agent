@@ -70,6 +70,9 @@ class SnippetAnalyzer:
                                        output_schema=SnippetAnalysisOutput,
                                        input={"snippet": state["snippet"]})
         
+        if isinstance(response, dict) and response.get("error"):
+            raise Exception(f"LLM error: {response.get('error_message', 'Unknown error')}")
+        
         if isinstance(response, SnippetAnalysisOutput):
             data = {
                 "claims": response.claims,
@@ -105,6 +108,9 @@ class SnippetAnalyzer:
         response = self.llm.invoke_model(CLAIMS_NORMALIZATION_PROMPT, 
                                        output_schema=ClaimsNormalizationOutput,
                                        input={"raw_claims": state["raw_claims"]})
+        
+        if isinstance(response, dict) and response.get("error"):
+            raise Exception(f"LLM error: {response.get('error_message', 'Unknown error')}")
         
         if isinstance(response, ClaimsNormalizationOutput):
             data = {
