@@ -1,4 +1,4 @@
-from langgraph.graph import StateGraph
+from langgraph.graph import StateGraph, END
 from langgraph.types import Send
 from typing import TypedDict, Literal, Annotated
 from operator import add
@@ -50,7 +50,6 @@ class Orquestrator:
         graph.add_node("initial_router", lambda state: state)
         graph.add_node("claims_router", lambda state: state)
         graph.add_node("validation_and_citation", self._validator_node)
-        graph.add_node("output_formatter", self._output_formatter_node)
         # Add ARTICLE nodes
         graph.add_node("article_analyzer", self._article_analyzer_adapter_node)
         # Add SNIPPET nodes
@@ -59,7 +58,6 @@ class Orquestrator:
         # Add edges
         graph.add_edge("article_analyzer", "claims_router")
         graph.add_edge("snippet_analyzer", "claims_router")
-        graph.add_edge("validation_and_citation", "output_formatter")
 
         # Conditionals
         graph.add_conditional_edges(
@@ -75,12 +73,12 @@ class Orquestrator:
             "claims_router",
             self._route_or_assign_workers,
             {
-                "end": "output_formatter"
+                "end": END
             }
         )
 
         graph.set_entry_point("initial_router")
-        graph.set_finish_point("output_formatter")
+        graph.set_finish_point("validation_and_citation")
 
         return graph.compile()
 
@@ -147,24 +145,10 @@ class Orquestrator:
             dict[str, any]: Dictionary containing the analyzed claim to add to global state.
         """
         claim = state["claim"]
-        print(f"Processing claim in parallel: '{claim.text[:50]}...'")
         validator_result_dict = self.validator.run(claim)
         validator_result = AnalyzedClaim(**validator_result_dict)
-        print(f"Finished processing claim: '{claim.text[:50]}...'")
 
         return {"analyzed_claims": [validator_result]}
-
-    def _output_formatter_node(self, state: State) -> dict[str, any]:
-        """
-        Formats final text output.
-
-        Args:
-            state (State): Graph state.
-        Returns:
-            dict[str, any]: Dictionary containing the properties to update in the global state.
-        """
-
-        return state
 
     def run(self, snippet: str | None = "") -> list[AnalyzedClaim]:
         """
