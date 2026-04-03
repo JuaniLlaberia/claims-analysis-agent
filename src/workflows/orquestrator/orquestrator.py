@@ -49,12 +49,12 @@ class Orquestrator:
         # Add GLOBAL nodes
         graph.add_node("initial_router", lambda state: state)
         graph.add_node("claims_router", lambda state: state)
-        graph.add_node("validation_and_citation", self._validator)
-        graph.add_node("output_formatter", self._output_formatter)
+        graph.add_node("validation_and_citation", self._validator_node)
+        graph.add_node("output_formatter", self._output_formatter_node)
         # Add ARTICLE nodes
-        graph.add_node("article_analyzer", self._article_analyzer_adapter)
+        graph.add_node("article_analyzer", self._article_analyzer_adapter_node)
         # Add SNIPPET nodes
-        graph.add_node("snippet_analyzer", self._snippet_analyzer_adapter)
+        graph.add_node("snippet_analyzer", self._snippet_analyzer_adapter_node)
         
         # Add edges
         graph.add_edge("article_analyzer", "claims_router")
@@ -97,7 +97,7 @@ class Orquestrator:
 
 
 
-    def _article_analyzer_adapter(self, state: State) -> dict[str, any]:
+    def _article_analyzer_adapter_node(self, state: State) -> dict[str, any]:
         """
         Handles execution of article analyzer sub-graph. The sub-graph internally performs multiple
         steps to analyze and extract the claims from the given article.
@@ -110,7 +110,7 @@ class Orquestrator:
 
         return state
 
-    def _snippet_analyzer_adapter(self, state: State) -> dict[str, any]:
+    def _snippet_analyzer_adapter_node(self, state: State) -> dict[str, any]:
         """
         Handles execution of snippet analyzer sub-graph. The sub-graph internally performs analysis and
         extraction of claims from snippet.
@@ -136,7 +136,7 @@ class Orquestrator:
             return "end"
         return [Send("validation_and_citation", {"claim": claim}) for claim in state["claims"]]
 
-    def _validator(self, state: dict[str, any]) -> dict[str, any]:
+    def _validator_node(self, state: dict[str, any]) -> dict[str, any]:
         """
         Handles execution of the validation and citations sub-graph for a single claim. The sub-graph internally
         verifies the claim and finds citations for it.
@@ -154,7 +154,7 @@ class Orquestrator:
 
         return {"analyzed_claims": [validator_result]}
 
-    def _output_formatter(self, state: State) -> dict[str, any]:
+    def _output_formatter_node(self, state: State) -> dict[str, any]:
         """
         Formats final text output.
 

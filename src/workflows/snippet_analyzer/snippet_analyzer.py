@@ -36,8 +36,8 @@ class SnippetAnalyzer:
         """
         graph = StateGraph(State)
 
-        graph.add_node("interpret_node", self._interpret_snippet)
-        graph.add_node("normalization_node", self._normalize_claims)
+        graph.add_node("interpret_node", self._interpret_snippet_node)
+        graph.add_node("normalization_node", self._normalize_claims_node)
         graph.add_node("claims_router", lambda state: state)
 
         graph.set_entry_point("interpret_node")
@@ -57,7 +57,7 @@ class SnippetAnalyzer:
 
         return graph.compile()
 
-    def _interpret_snippet(self, state: State) -> dict[str, any]:
+    def _interpret_snippet_node(self, state: State) -> dict[str, any]:
         """
         Handles the analysis of snippets and tries to extract possible claims.
 
@@ -93,7 +93,7 @@ class SnippetAnalyzer:
         """
         return "continue" if len(state["raw_claims"]) > 0 else "end"
 
-    def _normalize_claims(self, state: State) -> dict[str, any]:
+    def _normalize_claims_node(self, state: State) -> dict[str, any]:
         """
         Handles claims normalization and string preparation to be a 'Claim' object.
 
