@@ -1,0 +1,30 @@
+RATING_MAP = {
+    # English
+    "false": "FALSE",
+    "mostly false": "MOSTLY_FALSE",
+    "half true": "HALF_TRUE",
+    "mostly true": "MOSTLY_TRUE",
+    "true": "TRUE",
+    "misleading": "MISLEADING",
+    "spins the facts": "MISLEADING",
+    "not the whole story": "MISLEADING",
+    "pants on fire": "FALSE",
+    "incorrect": "FALSE",
+    "inaccurate": "FALSE",
+    "exaggerated": "MISLEADING",
+    "unverified": "UNVERIFIED",
+    # Spanish
+    "falso": "FALSE",
+    "verdadero": "TRUE",
+    "engañoso": "MISLEADING",
+    "inexacto": "MISLEADING",
+    "insostenible": "FALSE",
+    "sin evidencia": "UNVERIFIED",
+    "a medias": "HALF_TRUE",
+    "exagerado": "MISLEADING",
+    # Portuguese
+    "falso": "FALSE",
+    "verdadeiro": "TRUE",
+    "enganoso": "MISLEADING",
+    "impreciso": "MISLEADING",
+}
