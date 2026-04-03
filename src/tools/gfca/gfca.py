@@ -14,6 +14,7 @@ class GFCAClient:
     """
 
     BASE_URL = "https://factchecktools.googleapis.com/v1alpha1/claims:search"
+    _encoder = None
 
     def __init__(
         self,
@@ -33,8 +34,11 @@ class GFCAClient:
                 "No API key provided."
             )
 
-        self.similarity_threshold = similarity_threshold    
-        self.encoder = SentenceTransformer(similarity_model)
+        self.similarity_threshold = similarity_threshold
+        self.similarity_model = similarity_model
+        # Lazy load encoder
+        if GFCAClient._encoder is None:
+            GFCAClient._encoder = SentenceTransformer(similarity_model)
 
     def _fetch_gfca(
         self,
@@ -117,9 +121,9 @@ class GFCAClient:
         if not results:
             return []
 
-        query_embedding = self.encoder.encode(query, convert_to_tensor=True)
+        query_embedding = GFCAClient._encoder.encode(query, convert_to_tensor=True)
         claim_texts = [r.claim_text for r in results]
-        claim_embeddings = self.encoder.encode(claim_texts, convert_to_tensor=True)
+        claim_embeddings = GFCAClient._encoder.encode(claim_texts, convert_to_tensor=True)
 
         scores = util.cos_sim(query_embedding, claim_embeddings)[0]
 
