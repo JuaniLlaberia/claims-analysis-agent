@@ -10,7 +10,7 @@ from src.tools.gfca.gfca import GFCAClient
 from src.tools.gfca.models.fact_check_result import FactCheckResult
 from .models.output import ValidatorOutput, CoverageAssessment, CitationsOutput
 from .utils.prompts import VALIDATOR_PROMPT, CITATIONS_PROMPT
-from .utils.helper import name_from_url
+from .utils.helper import name_from_url, detect_language
 
 class State(TypedDict):
     claim: Claim
@@ -139,9 +139,11 @@ class Validator:
         Returns:
             dict[str, any]: Dictionary containing the properties to update in the state.
         """
+        language = detect_language(text=state["claim"].text)
+
         results = self.fgca_client.search(
             query=state["claim"].text,
-            language_code="en"
+            language_code=language
         )
 
         return {
