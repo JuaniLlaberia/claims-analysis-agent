@@ -133,7 +133,7 @@ class SnippetAnalyzer:
         Args:
             snippet (str): Text snippet to analyze.
         Returns:
-            ...
+            list[Claim]: List of extracted claims.
         """
         initial_state = State(
             snippet=snippet,
