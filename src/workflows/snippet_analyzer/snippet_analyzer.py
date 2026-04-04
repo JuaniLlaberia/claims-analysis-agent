@@ -4,7 +4,10 @@ from typing import TypedDict, Literal
 
 from src.workflows.orquestrator.models.claim import Claim
 from src.llm.gemini import Gemini
+from src.utils.logger import get_logger
 from .models.output import SnippetAnalysisOutput, ClaimsNormalizationOutput
+
+logger = get_logger(__name__)
 from .utils.prompts import SNIPPET_ANALYSIS_PROMPT, CLAIMS_NORMALIZATION_PROMPT
 
 class State(TypedDict):
@@ -66,6 +69,7 @@ class SnippetAnalyzer:
         Returns:
             dict[str, any]: Dictionary containing the properties to update in the state.
         """
+        logger.info("Interpreting snippet and extracting raw claims via LLM")
         response = self.llm.invoke_model(SNIPPET_ANALYSIS_PROMPT, 
                                        output_schema=SnippetAnalysisOutput,
                                        input={"snippet": state["snippet"]})
@@ -105,6 +109,7 @@ class SnippetAnalyzer:
         Returns:
             dict[str, any]: Dictionary containing the properties to update in the state.
         """
+        logger.info(f"Normalizing {len(state['raw_claims'])} raw claims")
         response = self.llm.invoke_model(CLAIMS_NORMALIZATION_PROMPT, 
                                        output_schema=ClaimsNormalizationOutput,
                                        input={"raw_claims": state["raw_claims"]})
@@ -141,6 +146,7 @@ class SnippetAnalyzer:
             claims=[]
         )
 
+        logger.info("Initializing SnippetAnalyzer check")
         results = self.graph.invoke(initial_state)
 
         return results["claims"]

@@ -6,6 +6,9 @@ from operator import add
 from src.workflows.validator.validator import Validator
 from .models.claim import Claim, AnalyzedClaim
 from src.workflows.snippet_analyzer.snippet_analyzer import SnippetAnalyzer
+from src.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 class State(TypedDict):
     analysis_type: Literal["article", "snippet"]
@@ -106,6 +109,7 @@ class Orquestrator:
             dict[str, any]: Dictionary containing the properties to update in the global state.
         """
 
+        logger.info("Executing article analyzer for claims extraction")
         return state
 
     def _snippet_analyzer_adapter_node(self, state: State) -> dict[str, any]:
@@ -119,6 +123,7 @@ class Orquestrator:
             dict[str, any]: Dictionary containing the properties to update in the global state.
         """
 
+        logger.info("Executing snippet analyzer for claims extraction")
         snippet_analyzer = SnippetAnalyzer()
         extracted_claims = snippet_analyzer.run(snippet=state["snippet"])
 
@@ -131,7 +136,9 @@ class Orquestrator:
         Routes to end if no claims, otherwise assigns parallel validator workers for each claim.
         """
         if len(state["claims"]) == 0:
+            logger.info("No claims extracted from the source text.")
             return "end"
+        logger.info(f"Found {len(state['claims'])} claims to validate. Assigning workers...")
         return [Send("validation_and_citation", {"claim": claim}) for claim in state["claims"]]
 
     def _validator_node(self, state: dict[str, any]) -> dict[str, any]:
@@ -145,6 +152,7 @@ class Orquestrator:
             dict[str, any]: Dictionary containing the analyzed claim to add to global state.
         """
         claim = state["claim"]
+        logger.info(f"Starting validation and citation mapping for claim: '{claim.text[:50]}...'")
         validator_result_dict = self.validator.run(claim)
         validator_result = AnalyzedClaim(**validator_result_dict)
 
@@ -166,5 +174,6 @@ class Orquestrator:
             analyzed_claims=[]
         )
 
+        logger.info(f"Starting orquestrator with analysis type: {self.analysis_type}")
         results = self.graph.invoke(initial_state)
         return results["analyzed_claims"]
