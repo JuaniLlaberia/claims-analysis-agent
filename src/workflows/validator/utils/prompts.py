@@ -25,6 +25,11 @@ Analysis requirements:
 - Identify if sources are consistent or conflicting
 - Highlight if evidence is weak, indirect, or insufficient
 - When mentionning a source use their name not a number
+- Calculate and tag how strong the collective evidence is ("strong", "moderate", "weak", or "none") based on these criteria:
+  - "strong": Multiple reliable sources consistently support or contradict the claim with explicit facts.
+  - "moderate": At least one explicit source or multiple indirect sources suggest a conclusion.
+  - "weak": Evidence is tangential, highly speculative, or sources are conflicting/unclear.
+  - "none": No valid sources or evidence address the claim at all.
 
 Output requirements:
 - Be concise and precise
@@ -59,6 +64,7 @@ Output requirements:
 - Each source must include:
   - url
   - excerpt
+  - stance: explicitly analyze whether the source "supports", "contradicts", or is "neutral" towards the claim. Select "neutral" if the support or contradiction is not explicit.
 
 Claim:
 {claim}

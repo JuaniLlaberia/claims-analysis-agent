@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from typing import Literal
 from src.workflows.validator.models.source import Source
 from src.workflows.validator.models.output import CoverageAssessment
 
@@ -12,3 +13,7 @@ class AnalyzedClaim(BaseModel):
     evidence_summary: str = Field(..., description="Generated summary based on claim evidence")
     coverage: CoverageAssessment
     insufficient_evidence: bool
+    evidence_strength: Literal["strong", "moderate", "weak", "none"] = Field(
+        ...,
+        description="How strong the evidence is: 'strong', 'moderate', 'weak', or 'none'. 'none' if there is no evidence."
+    )

@@ -8,9 +8,12 @@ from src.workflows.orquestrator.models.claim import Claim
 from src.workflows.validator.models.source import Source
 from src.tools.gfca.gfca import GFCAClient
 from src.tools.gfca.models.fact_check_result import FactCheckResult
+from src.utils.logger import get_logger
 from .models.output import ValidatorOutput, CoverageAssessment, CitationsOutput
 from .utils.prompts import VALIDATOR_PROMPT, CITATIONS_PROMPT
 from .utils.helper import name_from_url, detect_language
+
+logger = get_logger(__name__)
 
 class State(TypedDict):
     claim: Claim
@@ -24,6 +27,7 @@ class State(TypedDict):
     evidence_summary: str
     coverage: CoverageAssessment
     insufficient_evidence: bool
+    evidence_strength: Literal["strong", "moderate", "weak", "none"]
 
 class Validator:
     """
@@ -105,7 +109,11 @@ class Validator:
         Returns:
             'continue' | 'fallback': Route label based on fgca results quantity.
         """
-        return "continue" if len(state["fgca_results"]) >= 1 else "fallback"
+        if len(state["fgca_results"]) >= 1:
+            logger.info(f"Found {len(state['fgca_results'])} results via FGCA")
+            return "continue"
+        logger.info("No results found via FGCA, falling back to Web Search")
+        return "fallback"
 
     def _route_by_web_search(self, state: State) -> Literal["continue", "end"]:
         """
@@ -141,6 +149,7 @@ class Validator:
         """
         language = detect_language(text=state["claim"].text)
 
+        logger.info(f"Attempting to retrieve claim facts via Google Fact Check API for '{state['claim'].text[:50]}...'")
         results = self.fgca_client.search(
             query=state["claim"].text,
             language_code=language
@@ -160,6 +169,7 @@ class Validator:
         Returns:
             dict[str, any]: Dictionary containing the properties to update in the state.
         """
+        logger.info("Performing claim web search via Tavily")
         results = self.tavily_client.search(
             query=state["claim"].text,
             search_depth="advanced",
@@ -184,6 +194,7 @@ class Validator:
         Returns:
             dict[str, any]: Dictionary containing the properties to update in the state.
         """
+        logger.info("Validating gathered evidence against claim")
         if state["evidence_source"] == "fgca":
             evidence_text = "\n\n".join([
                 f"Source {i+1}:\n"
@@ -202,6 +213,7 @@ class Validator:
         
         # If no evidence found, mark as insufficient
         if not evidence_text.strip():
+            logger.info("No substantial evidence found across sources")
             return {
                 "evidence_summary": "No sources or evidence could be found for this claim.",
                 "coverage": CoverageAssessment(
@@ -212,6 +224,7 @@ class Validator:
                     newest_source_date=None
                 ),
                 "insufficient_evidence": True,
+                "evidence_strength": "none",
             }
                 
         response = self.llm.invoke_model_grounded(prompt=VALIDATOR_PROMPT,
@@ -229,12 +242,14 @@ class Validator:
                 "evidence_summary": response.evidence_summary,
                 "coverage": response.coverage,
                 "insufficient_evidence": response.insufficient_evidence,
+                "evidence_strength": response.evidence_strength,
             }
         else:
             data = {
                 "evidence_summary": response.get("evidence_summary", ""),
                 "coverage": response.get("coverage", {}),
                 "insufficient_evidence": response.get("insufficient_evidence", False),
+                "evidence_strength": response.get("evidence_strength", "none"),
             }
 
         return {**data}
@@ -248,6 +263,7 @@ class Validator:
         Returns:
             dict[str, any]: Dictionary containing the properties to update in the state.
         """
+        logger.info("Extracting precise citations and analyzing specific source stances")
         if state["evidence_source"] == "fgca":
             sources_text = "\n\n".join([
                 f"Source {i+1}:\n"
@@ -283,6 +299,7 @@ class Validator:
                     url=s.url,
                     name=name_from_url(s.url),
                     fragments=s.fragments,
+                    stance=s.stance,
                 )
                 for s in response.sources
             ]
@@ -292,6 +309,7 @@ class Validator:
                     url=s.get("url", ""),
                     name=s.get("name") or name_from_url(s.get("url", "")),
                     fragments=s.get("fragments", []),
+                    stance=s.get("stance", "neutral"),
                 )
                 for s in response.get("sources", [])
             ]
@@ -317,11 +335,14 @@ class Validator:
             evidence_source="fgca",
             fgca_results=[],
             web_search_results=[],
+            sources=[],
             evidence_summary="",
             coverage=None,
-            insufficient_evidence=False
+            insufficient_evidence=False,
+            evidence_strength="none"
         )
 
+        logger.info("Initializing claim validator")
         results = self.graph.invoke(initial_state)
 
         return {
@@ -329,4 +350,5 @@ class Validator:
             "evidence_summary": results["evidence_summary"],
             "coverage": results["coverage"],
             "insufficient_evidence": results["insufficient_evidence"],
+            "evidence_strength": results["evidence_strength"],
         }
